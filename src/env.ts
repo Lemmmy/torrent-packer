@@ -2,8 +2,9 @@ import "dotenv/config";
 import path from "path";
 import { z } from "zod";
 import os from "node:os";
+import type { CliOptions } from "./cli.ts";
 
-export const env = z
+const envSchema = z
   .object({
     // Base working directory
     BASE_DIR: z.string().default("data-base"),
@@ -40,5 +41,26 @@ export const env = z
       TORRENT_DIR: env.TORRENT_DIR || path.join(env.BASE_DIR, "torrent"),
       SPECTROGRAMS_DIR: env.SPECTROGRAMS_DIR || path.join(env.BASE_DIR, "spectrograms"),
     };
-  })
-  .parse(process.env);
+  });
+
+export type Env = z.infer<typeof envSchema>;
+
+export let env = envSchema.parse(process.env);
+
+/**
+ * Apply CLI overrides to environment settings
+ */
+export function applyCliOverrides(cliOptions: CliOptions): void {
+  if (cliOptions.inputDir) {
+    env.INPUT_DIR = cliOptions.inputDir;
+  }
+  if (cliOptions.outputDir) {
+    env.OUTPUT_DIR = cliOptions.outputDir;
+  }
+  if (cliOptions.torrentDir) {
+    env.TORRENT_DIR = cliOptions.torrentDir;
+  }
+  if (cliOptions.spectrogramsDir) {
+    env.SPECTROGRAMS_DIR = cliOptions.spectrogramsDir;
+  }
+}

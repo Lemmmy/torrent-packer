@@ -142,7 +142,7 @@ export async function validateFlacBitrate(releaseDir: string, queue: PQueue): Pr
   const has24Bit = bitDepths.some((result) => result && result.bitDepth === 24);
 
   if (has24Bit) {
-    const releaseInfo = parseReleaseDirectory(releaseDir);
+    const releaseInfo = await parseReleaseDirectory(releaseDir);
     const hasBitrateTag = hasBitrateInFormatTag(releaseInfo.basename);
 
     if (!hasBitrateTag) {

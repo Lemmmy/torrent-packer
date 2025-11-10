@@ -1,0 +1,27 @@
+diff --git a/index.js b/index.js
+index bdec153fbd999fcdc2120009e383faa24174b24a..1718909d2e185e1643521b67f9c215050661cda5 100644
+--- a/index.js
++++ b/index.js
+@@ -122,13 +122,15 @@ function _parseInput (input, opts, cb) {
+     })
+   }
+ 
+-  if (commonPrefix) {
+-    input.forEach(item => {
+-      const pathless = (ArrayBuffer.isView(item) || isReadable(item)) && !item[pathSymbol]
+-      if (typeof item === 'string' || pathless) return
+-      item[pathSymbol].shift()
+-    })
+-  }
++  // PATCHED: Disable common prefix stripping to preserve directory structure
++  // This was causing "Disc 1/" to be stripped from all file paths when creating torrents
++  // if (commonPrefix) {
++  //   input.forEach(item => {
++  //     const pathless = (ArrayBuffer.isView(item) || isReadable(item)) && !item[pathSymbol]
++  //     if (typeof item === 'string' || pathless) return
++  //     item[pathSymbol].shift()
++  //   })
++  // }
+ 
+   if (!opts.name && commonPrefix) {
+     opts.name = commonPrefix

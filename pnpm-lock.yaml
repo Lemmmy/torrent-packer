@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  create-torrent@6.1.0:
+    hash: 5jd5wnoozkvu2wpj5rx3qn66ji
+    path: patches/create-torrent@6.1.0.patch
+
 importers:
 
   .:
@@ -22,7 +27,7 @@ importers:
         version: 1.1.2
       create-torrent:
         specifier: ^6.1.0
-        version: 6.1.0
+        version: 6.1.0(patch_hash=5jd5wnoozkvu2wpj5rx3qn66ji)
       dotenv:
         specifier: ^17.2.2
         version: 17.2.2
@@ -2386,7 +2391,7 @@ snapshots:
 
   content-type@1.0.5: {}
 
-  create-torrent@6.1.0:
+  create-torrent@6.1.0(patch_hash=5jd5wnoozkvu2wpj5rx3qn66ji):
     dependencies:
       bencode: 4.0.0
       block-iterator: 1.1.1

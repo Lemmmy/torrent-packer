@@ -3,12 +3,15 @@ import * as path from "node:path";
 import createTorrent from "create-torrent";
 import chalkTemplate from "chalk-template";
 import { getAllFiles, matchesPattern } from "./file-utils.ts";
-import type { TrackerConfig } from "./types.ts";
+import type { TrackerConfig, DiscInfo } from "./types.ts";
 
 export interface TorrentCreationOptions {
   releaseDir: string;
   outputDir: string;
   tracker: TrackerConfig;
+  suffix?: string;
+  discs?: DiscInfo[];
+  includeDiscTypes?: ("cd" | "bd" | "dvd" | "photobook")[];
 }
 
 /**
@@ -61,14 +64,47 @@ function calculatePieceLength(totalSize: number): number {
  * Create a torrent file for a release directory
  */
 export async function createTorrentFile(options: TorrentCreationOptions): Promise<string> {
-  const { releaseDir, outputDir, tracker } = options;
+  const { releaseDir, outputDir, tracker, suffix, discs = [], includeDiscTypes } = options;
 
   const releaseName = path.basename(releaseDir);
-  const torrentFileName = `${releaseName}-${tracker.name}.torrent`;
+  const suffixPart = suffix ? `-${suffix}` : "";
+  const torrentFileName = `${releaseName}${suffixPart}-${tracker.name}.torrent`;
   const torrentPath = path.join(outputDir, torrentFileName);
 
   // Get all files in the release directory
   let allFiles = await getAllFiles(releaseDir);
+
+  // Filter files based on disc types if specified
+  if (includeDiscTypes && discs.length > 0) {
+    // Get paths of discs to include (normalize path separators)
+    const includedDiscPaths = new Set(
+      discs.filter((disc) => includeDiscTypes.includes(disc.type)).map((disc) => path.normalize(disc.path)),
+    );
+
+    // Only include files that are within the included disc paths
+    allFiles = allFiles.filter((file) => {
+      const normalizedFile = path.normalize(file);
+      return Array.from(includedDiscPaths).some((discPath) => {
+        // Check if file is within this disc path
+        return normalizedFile.startsWith(discPath + path.sep) || normalizedFile === discPath;
+      });
+    });
+  } else if (includeDiscTypes === undefined && discs.length > 0) {
+    // If no includeDiscTypes specified but we have discs, exclude BD/DVD/photobook discs
+    const excludedDiscPaths = new Set(
+      discs
+        .filter((disc) => disc.type === "bd" || disc.type === "dvd" || disc.type === "photobook")
+        .map((disc) => path.normalize(disc.path)),
+    );
+
+    // Exclude files that are within the excluded disc paths
+    allFiles = allFiles.filter((file) => {
+      const normalizedFile = path.normalize(file);
+      return !Array.from(excludedDiscPaths).some((discPath) => {
+        return normalizedFile.startsWith(discPath + path.sep) || normalizedFile === discPath;
+      });
+    });
+  }
 
   // Filter out excluded files based on tracker configuration
   if (tracker.excludeFilePatterns && tracker.excludeFilePatterns.length > 0) {
@@ -131,11 +167,15 @@ export async function createTorrentsForRelease(
     flac24?: string;
     mp3_320?: string;
     mp3_v0?: string;
+    bluray?: string;
+    dvd?: string;
+    photobook?: string;
   },
   trackers: TrackerConfig[],
   torrentOutputDir: string,
+  discs: DiscInfo[] = [],
 ): Promise<void> {
-  const { flac, flac24, mp3_320, mp3_v0 } = releasePaths;
+  const { flac, flac24, mp3_320, mp3_v0, bluray, dvd, photobook } = releasePaths;
 
   for (const tracker of trackers) {
     console.log(chalkTemplate`  {blue →} Creating torrents for tracker: ${tracker.name}`);
@@ -146,16 +186,18 @@ export async function createTorrentsForRelease(
         releaseDir: flac,
         outputDir: torrentOutputDir,
         tracker,
+        discs,
       });
       console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
     }
 
-    // Create 24-bit FLAC torrent if available
+    // Create FLAC-24 torrent if available
     if (flac24) {
       const torrentPath = await createTorrentFile({
         releaseDir: flac24,
         outputDir: torrentOutputDir,
         tracker,
+        discs,
       });
       console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
     }
@@ -166,6 +208,7 @@ export async function createTorrentsForRelease(
         releaseDir: mp3_320,
         outputDir: torrentOutputDir,
         tracker,
+        discs,
       });
       console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
     }
@@ -176,6 +219,46 @@ export async function createTorrentsForRelease(
         releaseDir: mp3_v0,
         outputDir: torrentOutputDir,
         tracker,
+        discs,
+      });
+      console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+    }
+
+    // Create Blu-ray torrent if available and tracker allows it
+    if (bluray && tracker.outputBluray) {
+      const torrentPath = await createTorrentFile({
+        releaseDir: bluray,
+        outputDir: torrentOutputDir,
+        tracker,
+        suffix: "bd",
+        discs,
+        includeDiscTypes: ["bd"],
+      });
+      console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+    }
+
+    // Create DVD torrent if available and tracker allows it
+    if (dvd && tracker.outputDVD) {
+      const torrentPath = await createTorrentFile({
+        releaseDir: dvd,
+        outputDir: torrentOutputDir,
+        tracker,
+        suffix: "dvd",
+        discs,
+        includeDiscTypes: ["dvd"],
+      });
+      console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+    }
+
+    // Create photobook torrent if available and tracker allows it
+    if (photobook && tracker.outputPhotobook) {
+      const torrentPath = await createTorrentFile({
+        releaseDir: photobook,
+        outputDir: torrentOutputDir,
+        tracker,
+        suffix: "photobook",
+        discs,
+        includeDiscTypes: ["photobook"],
       });
       console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
     }

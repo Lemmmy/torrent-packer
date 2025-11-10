@@ -103,9 +103,9 @@ Release directories must follow this naming convention:
 
 Examples:
 
-- `[2016.12.14] 悠木碧 — トコワカノクニ {VTCL-60429} [CD-FLAC]`
-- `[2020.01.15] Artist — Album {CAT-001} [FLAC-24-48]`
-- `[2019.05.20] Artist — Album {CAT-002} [WEB-320]`
+- `[2016.12.14] Artist — Album {CAT-001} [CD-FLAC]`
+- `[2020.01.15] Artist — Album {CAT-002} [FLAC-24-48]`
+- `[2019.05.20] Artist — Album {CAT-003} [WEB-320]`
 
 ### Supported Format Tags
 
@@ -159,7 +159,7 @@ This is useful for cleaning up after processing batches of releases while keepin
 - `--trackers, -t`: Specify which trackers to use (space-separated list)
   - If not specified, uses all trackers with `default: true` in `trackers.json`
   - Example: `--trackers red ab jps`
-- `--no-move`: Don't move input files to output directory after processing
+- `--dont-move`: Don't move input files to output directory after processing
   - By default, input files are moved to output after successful processing
   - Use this flag to keep input files in place
 

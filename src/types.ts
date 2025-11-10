@@ -5,10 +5,19 @@ export interface TrackerConfig {
   default?: boolean;
   no320?: boolean;
   excludeFilePatterns?: string[];
+  outputBluray?: boolean;
+  outputDVD?: boolean;
+  outputPhotobook?: boolean;
 }
 
 export interface TrackersConfig {
   [key: string]: TrackerConfig;
+}
+
+export interface DiscInfo {
+  path: string;
+  name: string;
+  type: "cd" | "bd" | "dvd" | "photobook";
 }
 
 export interface ReleaseInfo {
@@ -18,6 +27,10 @@ export interface ReleaseInfo {
   bitDepth?: number;
   is24Bit: boolean;
   hasMP3: boolean;
+  discs: DiscInfo[];
+  hasBluray: boolean;
+  hasDVD: boolean;
+  hasPhotobook: boolean;
 }
 
 export interface AudioFileInfo {

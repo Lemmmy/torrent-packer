@@ -2,6 +2,22 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 
 /**
+ * Global filter patterns - regex patterns to exclude from all operations
+ * These patterns are matched against the full path
+ */
+export const GLOBAL_FILTER_PATTERNS = [/Raw Scans/i, /\.tif$/i, /AAC!/i];
+
+/**
+ * Check if a path should be globally filtered
+ */
+export function shouldGloballyFilter(filePath: string): boolean {
+  // Normalize path separators for consistent matching
+  const normalizedPath = filePath.replace(/\\/g, "/");
+
+  return GLOBAL_FILTER_PATTERNS.some((pattern) => pattern.test(normalizedPath));
+}
+
+/**
  * Recursively find all files matching a pattern
  */
 export async function findFiles(dir: string, pattern: RegExp): Promise<string[]> {
@@ -41,6 +57,11 @@ export async function copyDirectoryStructure(
     const srcPath = path.join(srcDir, entry.name);
     const destPath = path.join(destDir, entry.name);
 
+    // Apply global filters
+    if (shouldGloballyFilter(srcPath)) {
+      continue;
+    }
+
     if (entry.isDirectory()) {
       await copyDirectoryStructure(srcPath, destPath, fileFilter);
     } else if (entry.isFile()) {
@@ -54,7 +75,7 @@ export async function copyDirectoryStructure(
 /**
  * Get all files in a directory recursively
  */
-export async function getAllFiles(dir: string): Promise<string[]> {
+export async function getAllFiles(dir: string, applyGlobalFilters: boolean = true): Promise<string[]> {
   const results: string[] = [];
 
   async function walk(currentDir: string): Promise<void> {
@@ -62,6 +83,11 @@ export async function getAllFiles(dir: string): Promise<string[]> {
 
     for (const entry of entries) {
       const fullPath = path.join(currentDir, entry.name);
+
+      // Apply global filters if enabled
+      if (applyGlobalFilters && shouldGloballyFilter(fullPath)) {
+        continue;
+      }
 
       if (entry.isDirectory()) {
         await walk(fullPath);

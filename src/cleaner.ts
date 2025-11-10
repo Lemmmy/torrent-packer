@@ -11,9 +11,41 @@ import { findFiles } from "./file-utils.ts";
 const execFileAsync = promisify(execFile);
 
 /**
+ * Process a single image in a directory
+ */
+async function processImageInDirectory(dir: string, originalImage: string): Promise<void> {
+  const coverPath = path.join(dir, "cover.jpg");
+
+  // Skip if already named cover.jpg
+  if (path.basename(originalImage).toLowerCase() === "cover.jpg") {
+    // Still resize it
+    await sharp(originalImage)
+      .resize(512, 512, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 90 })
+      .toFile(coverPath + ".tmp");
+
+    await fs.rename(coverPath + ".tmp", coverPath);
+    console.log(chalkTemplate`  {green ✓} Resized cover art: ${path.relative(dir, coverPath)}`);
+    return;
+  }
+
+  // Resize and save as cover.jpg
+  await sharp(originalImage)
+    .resize(512, 512, { fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 90 })
+    .toFile(coverPath);
+
+  // Remove original
+  await fs.unlink(originalImage);
+
+  console.log(chalkTemplate`  {green ✓} Processed cover art: ${path.basename(originalImage)} → cover.jpg`);
+}
+
+/**
  * Process cover art in a release directory:
- * - If there's only one image file, resize it to max 512x512 and rename to cover.jpg
- * - Remove the original image file
+ * - If there's only one image file in the base directory, resize it to max 512x512 and rename to cover.jpg
+ * - Also process images in Disc subdirectories that contain FLAC files
+ * - Remove the original image files
  */
 export async function processCoverArt(releaseDir: string): Promise<void> {
   const imageExtensions = /\.(jpg|jpeg|png|gif|bmp|webp)$/i;
@@ -24,33 +56,34 @@ export async function processCoverArt(releaseDir: string): Promise<void> {
     .filter((entry) => entry.isFile() && imageExtensions.test(entry.name))
     .map((entry) => path.join(releaseDir, entry.name));
 
+  // Process base directory image if there's exactly one
   if (imageFiles.length === 1) {
-    const originalImage = imageFiles[0];
-    const coverPath = path.join(releaseDir, "cover.jpg");
+    await processImageInDirectory(releaseDir, imageFiles[0]);
+  }
 
-    // Skip if already named cover.jpg
-    if (path.basename(originalImage).toLowerCase() === "cover.jpg") {
-      // Still resize it
-      await sharp(originalImage)
-        .resize(512, 512, { fit: "inside", withoutEnlargement: true })
-        .jpeg({ quality: 90 })
-        .toFile(coverPath + ".tmp");
+  // Process Disc subdirectories
+  const discDirs = entries.filter((entry) => entry.isDirectory() && entry.name.match(/^Disc\s+\d+/i));
 
-      await fs.rename(coverPath + ".tmp", coverPath);
-      console.log(chalkTemplate`  {green ✓} Resized cover art: ${path.basename(coverPath)}`);
-      return;
+  for (const discDir of discDirs) {
+    const discPath = path.join(releaseDir, discDir.name);
+    const discEntries = await fs.readdir(discPath, { withFileTypes: true });
+
+    // Check if this disc contains FLAC files
+    const hasFlacFiles = discEntries.some((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".flac"));
+
+    if (!hasFlacFiles) {
+      continue;
     }
 
-    // Resize and save as cover.jpg
-    await sharp(originalImage)
-      .resize(512, 512, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 90 })
-      .toFile(coverPath);
+    // Find images in this disc directory
+    const discImageFiles = discEntries
+      .filter((entry) => entry.isFile() && imageExtensions.test(entry.name))
+      .map((entry) => path.join(discPath, entry.name));
 
-    // Remove original
-    await fs.unlink(originalImage);
-
-    console.log(chalkTemplate`  {green ✓} Processed cover art: ${path.basename(originalImage)} → cover.jpg`);
+    // Process if there's exactly one image
+    if (discImageFiles.length === 1) {
+      await processImageInDirectory(discPath, discImageFiles[0]);
+    }
   }
 }
 

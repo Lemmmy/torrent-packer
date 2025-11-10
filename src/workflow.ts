@@ -28,6 +28,9 @@ export interface ProcessingResult {
   flac24?: string;
   mp3_320?: string;
   mp3_v0?: string;
+  bluray?: string;
+  dvd?: string;
+  photobook?: string;
 }
 
 /**
@@ -38,9 +41,10 @@ export async function processRelease(
   trackers: TrackerConfig[],
   skip320: boolean = false,
   noMove: boolean = false,
+  forceType?: "cd" | "bd" | "dvd",
 ): Promise<ProcessingResult> {
   const queue = new PQueue({ concurrency: env.CONCURRENCY_LIMIT });
-  const releaseInfo = parseReleaseDirectory(releaseDir);
+  const releaseInfo = await parseReleaseDirectory(releaseDir, forceType);
 
   console.log(chalkTemplate`\n{bold.cyan Processing:} ${releaseInfo.basename}`);
 
@@ -135,6 +139,7 @@ export async function processRelease(
           outputDir: env.OUTPUT_DIR,
           format: "320",
           queue,
+          discs: releaseInfo.discs,
         });
 
         // Validate 320 durations
@@ -150,6 +155,7 @@ export async function processRelease(
         outputDir: env.OUTPUT_DIR,
         format: "V0",
         queue,
+        discs: releaseInfo.discs,
       });
 
       // Validate V0 durations
@@ -170,6 +176,7 @@ export async function processRelease(
         outputDir: env.OUTPUT_DIR,
         format: "320",
         queue,
+        discs: releaseInfo.discs,
       });
 
       // Validate 320 durations
@@ -185,6 +192,7 @@ export async function processRelease(
       outputDir: env.OUTPUT_DIR,
       format: "V0",
       queue,
+      discs: releaseInfo.discs,
     });
 
     // Validate V0 durations
@@ -193,10 +201,37 @@ export async function processRelease(
     }
   }
 
+  // Step 3.5: Handle BD/DVD/photobook discs
+  if (releaseInfo.hasBluray || releaseInfo.hasDVD || releaseInfo.hasPhotobook) {
+    console.log(chalkTemplate`{bold Step 3.5:} Preparing BD/DVD/Photobook torrents...`);
+    
+    // Use the original source directory (FLAC 24-bit or 16-bit)
+    // All BD/DVD/photobook torrents will reference the same base directory
+    const sourceDir = result.flac24 || result.flac || releaseDir;
+    
+    // For BD/DVD/photobook, we don't create separate copies
+    // Instead, we'll just mark them for torrent creation
+    // The torrent creator will include only the relevant discs
+    if (releaseInfo.hasBluray) {
+      result.bluray = sourceDir;
+      console.log(chalkTemplate`    {green ✓} Marked Blu-ray discs for torrent creation`);
+    }
+    
+    if (releaseInfo.hasDVD) {
+      result.dvd = sourceDir;
+      console.log(chalkTemplate`    {green ✓} Marked DVD discs for torrent creation`);
+    }
+    
+    if (releaseInfo.hasPhotobook) {
+      result.photobook = sourceDir;
+      console.log(chalkTemplate`    {green ✓} Marked photobook for torrent creation`);
+    }
+  }
+
   // Step 4: Create torrents
   console.log(chalkTemplate`{bold Step 4:} Creating torrents...`);
 
-  await createTorrentsForRelease(result, trackers, env.TORRENT_DIR);
+  await createTorrentsForRelease(result, trackers, env.TORRENT_DIR, releaseInfo.discs);
 
   // Wait for spectrograms to finish before moving files
   if (spectrogramQueue) {

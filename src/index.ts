@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
 import chalkTemplate from "chalk-template";
-import { env } from "./env.ts";
+import { env, applyCliOverrides } from "./env.ts";
 import { scanInputDirectory, loadTrackers, processRelease, shouldSkip320 } from "./workflow.ts";
 import { parseCliArgs } from "./cli.ts";
 import { printInfo, printSuccess } from "./warning-utils.ts";
@@ -8,8 +8,9 @@ import { printInfo, printSuccess } from "./warning-utils.ts";
 async function main() {
   printInfo("Torrent Packer - Music Release Processor", []);
 
-  // Parse CLI arguments
+  // Parse CLI arguments and apply overrides
   const cliOptions = parseCliArgs();
+  applyCliOverrides(cliOptions);
 
   // Ensure output directories exist
   await fs.mkdir(env.INPUT_DIR, { recursive: true });
@@ -41,20 +42,29 @@ async function main() {
     console.log(chalkTemplate`{bold.yellow ℹ} All enabled trackers have no320 flag - skipping 320 transcoding\n`);
   }
 
-  // Scan for releases
-  const releases = await scanInputDirectory();
+  // Determine releases to process
+  let releases: string[];
 
-  if (releases.length === 0) {
-    console.log(chalkTemplate`{yellow No releases found in INPUT_DIR}`);
-    return;
+  if (cliOptions.releasePath) {
+    // Process single release specified via CLI
+    console.log(chalkTemplate`{bold Processing single release:} ${cliOptions.releasePath}\n`);
+    releases = [cliOptions.releasePath];
+  } else {
+    // Scan for releases in input directory
+    releases = await scanInputDirectory();
+
+    if (releases.length === 0) {
+      console.log(chalkTemplate`{yellow No releases found in INPUT_DIR}`);
+      return;
+    }
+
+    console.log(chalkTemplate`{bold Found ${releases.length} release(s) to process}\n`);
   }
-
-  console.log(chalkTemplate`{bold Found ${releases.length} release(s) to process}\n`);
 
   // Process each release
   for (const release of releases) {
     try {
-      await processRelease(release, trackers, skip320, cliOptions.noMove);
+      await processRelease(release, trackers, skip320, cliOptions.noMove, cliOptions.forceReleaseType);
     } catch (error) {
       console.error(chalkTemplate`{bold.red ✗ Error processing release:} ${release}`);
       console.error(error);

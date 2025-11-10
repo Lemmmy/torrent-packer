@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import type { ReleaseInfo } from "./types.ts";
+import { detectDiscs, hasBlurayDiscs, hasDVDDiscs, hasPhotobooks } from "./disc-detector.ts";
 
 /**
  * Parse a release directory name to extract format information
@@ -8,10 +9,16 @@ import type { ReleaseInfo } from "./types.ts";
  * - [FLAC-24] -> format: FLAC, is24Bit: true
  * - [FLAC-24-48] -> format: FLAC, is24Bit: true
  * - [CD-FLAC] -> format: FLAC, is24Bit: false
+ * - [2CD-FLAC] -> format: FLAC, is24Bit: false (normalized to CD)
  * - [WEB-320] -> format: 320, is24Bit: false
  * - [320] -> format: 320, is24Bit: false
+ * @param dirPath - The release directory path
+ * @param forceType - Optional: force the release to be treated as a specific type
  */
-export function parseReleaseDirectory(dirPath: string): ReleaseInfo {
+export async function parseReleaseDirectory(
+  dirPath: string,
+  forceType?: "cd" | "bd" | "dvd"
+): Promise<ReleaseInfo> {
   const basename = path.basename(dirPath);
 
   // Extract format tag from the end of the directory name
@@ -42,18 +49,26 @@ export function parseReleaseDirectory(dirPath: string): ReleaseInfo {
     format = formatTag;
   }
 
+  // Detect discs in the release
+  const discs = await detectDiscs(dirPath, forceType);
+
   return {
     path: dirPath,
     basename,
     format,
     is24Bit,
     hasMP3,
+    discs,
+    hasBluray: hasBlurayDiscs(discs),
+    hasDVD: hasDVDDiscs(discs),
+    hasPhotobook: hasPhotobooks(discs),
   };
 }
 
 /**
  * Replace the format tag in a release directory name
  * Preserves media designation (CD-, WEB-, etc.) if present
+ * Normalizes CD count (2CD, 3CD -> CD)
  */
 export function replaceFormatTag(dirName: string, newFormatTag: string): string {
   const formatMatch = dirName.match(/\[([^\]]+)\]$/);
@@ -63,12 +78,16 @@ export function replaceFormatTag(dirName: string, newFormatTag: string): string 
 
   const currentTag = formatMatch[1];
 
-  // Check if there's a media designation prefix (e.g., CD-, WEB-, CDr-)
-  const mediaMatch = currentTag.match(/^([A-Za-z]+r?)-/);
+  // Check if there's a media designation prefix (e.g., CD-, WEB-, CDr-, 2CD-, 3CD-)
+  const mediaMatch = currentTag.match(/^(\d*[A-Za-z]+r?)-/);
 
   if (mediaMatch) {
-    // Preserve the media designation
-    const mediaPrefix = mediaMatch[1];
+    // Preserve the media designation, but normalize CD count
+    let mediaPrefix = mediaMatch[1];
+    
+    // Normalize 2CD, 3CD, etc. to just CD
+    mediaPrefix = mediaPrefix.replace(/^\d+(CD)/i, '$1');
+    
     return dirName.replace(/\[([^\]]+)\]$/, `[${mediaPrefix}-${newFormatTag}]`);
   }
 

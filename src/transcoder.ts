@@ -4,22 +4,46 @@ import { spawn } from "node:child_process";
 import chalkTemplate from "chalk-template";
 import PQueue from "p-queue";
 import { env } from "./env.ts";
-import { findFiles, copyDirectoryStructure } from "./file-utils.ts";
+import { findFiles } from "./file-utils.ts";
 import { replaceFormatTag } from "./release-parser.ts";
 import { readFlacMetadata, buildLameTagArgs } from "./metadata.ts";
+import { copyReleaseExcludingDiscs } from "./disc-copier.ts";
+import type { DiscInfo } from "./types.ts";
 
 export interface TranscodeOptions {
   inputDir: string;
   outputDir: string;
   format: "320" | "V0";
   queue: PQueue;
+  discs?: DiscInfo[];
+}
+
+/**
+ * Remove all FLAC files from a directory recursively
+ */
+async function removeFlacFiles(dir: string): Promise<void> {
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      
+      if (entry.isDirectory()) {
+        await removeFlacFiles(fullPath);
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".flac")) {
+        await fs.unlink(fullPath);
+      }
+    }
+  } catch (error) {
+    // Ignore errors
+  }
 }
 
 /**
  * Transcode FLAC files to MP3 320 or V0
  */
 export async function transcodeToMP3(options: TranscodeOptions): Promise<string> {
-  const { inputDir, outputDir, format, queue } = options;
+  const { inputDir, outputDir, format, queue, discs = [] } = options;
 
   const inputBasename = path.basename(inputDir);
   const outputBasename = replaceFormatTag(inputBasename, format);
@@ -27,10 +51,11 @@ export async function transcodeToMP3(options: TranscodeOptions): Promise<string>
 
   console.log(chalkTemplate`  {blue →} Transcoding to ${format}: ${outputBasename}`);
 
-  // Create output directory and copy non-FLAC files
-  await copyDirectoryStructure(inputDir, outputPath, (filename) => {
-    return !filename.toLowerCase().endsWith(".flac");
-  });
+  // Create output directory and copy non-FLAC files, excluding BD/DVD/photobook discs
+  await copyReleaseExcludingDiscs(inputDir, outputPath, ["bd", "dvd", "photobook"], discs);
+  
+  // Now remove FLAC files from the copied structure (we'll transcode them separately)
+  await removeFlacFiles(outputPath);
 
   // Find all FLAC files
   const flacFiles = await findFiles(inputDir, /\.flac$/i);
