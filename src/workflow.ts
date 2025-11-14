@@ -3,6 +3,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import PQueue from "p-queue";
 import inquirer from "inquirer";
+import { create7zArchive } from "./archiver.ts";
 import { deleteM3U8Files, processCoverArt, renameCueFiles, stripFlacCovers } from "./cleaner.ts";
 import { downsample24BitFlac } from "./downsample.ts";
 import { validateTranscodedDurations } from "./duration-validator.ts";
@@ -204,11 +205,11 @@ export async function processRelease(
   // Step 3.5: Handle BD/DVD/photobook discs
   if (releaseInfo.hasBluray || releaseInfo.hasDVD || releaseInfo.hasPhotobook) {
     console.log(chalkTemplate`{bold Step 3.5:} Preparing BD/DVD/Photobook torrents...`);
-    
+
     // Use the original source directory (FLAC 24-bit or 16-bit)
     // All BD/DVD/photobook torrents will reference the same base directory
     const sourceDir = result.flac24 || result.flac || releaseDir;
-    
+
     // For BD/DVD/photobook, we don't create separate copies
     // Instead, we'll just mark them for torrent creation
     // The torrent creator will include only the relevant discs
@@ -216,12 +217,12 @@ export async function processRelease(
       result.bluray = sourceDir;
       console.log(chalkTemplate`    {green ✓} Marked Blu-ray discs for torrent creation`);
     }
-    
+
     if (releaseInfo.hasDVD) {
       result.dvd = sourceDir;
       console.log(chalkTemplate`    {green ✓} Marked DVD discs for torrent creation`);
     }
-    
+
     if (releaseInfo.hasPhotobook) {
       result.photobook = sourceDir;
       console.log(chalkTemplate`    {green ✓} Marked photobook for torrent creation`);
@@ -238,6 +239,19 @@ export async function processRelease(
     console.log(chalkTemplate`  {blue →} Waiting for spectrograms to finish...`);
     await spectrogramQueue.onIdle();
     console.log(chalkTemplate`  {green ✓} Spectrograms completed`);
+  }
+
+  // Step 4.5: Create 7z archive (only if no bluray/dvd/photobook)
+  if (!noMove && !releaseInfo.hasBluray && !releaseInfo.hasDVD && !releaseInfo.hasPhotobook) {
+    console.log(chalkTemplate`{bold Step 4.5:} Creating 7z archive...`);
+    try {
+      await create7zArchive(releaseDir, env.OUTPUT_DIR);
+    } catch (error) {
+      console.error(chalkTemplate`  {red ✗} Failed to create archive:`, error);
+      throw error;
+    }
+  } else if (!noMove && (releaseInfo.hasBluray || releaseInfo.hasDVD || releaseInfo.hasPhotobook)) {
+    console.log(chalkTemplate`{bold Step 4.5:} {yellow ⚠} Skipping 7z archive (contains Blu-ray/DVD/photobook)`);
   }
 
   // Step 5: Move input files to output directory
