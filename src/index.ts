@@ -4,6 +4,7 @@ import { env, applyCliOverrides } from "./env.ts";
 import { scanInputDirectory, loadTrackers, processRelease, shouldSkip320 } from "./workflow.ts";
 import { parseCliArgs } from "./cli.ts";
 import { printInfo, printSuccess } from "./warning-utils.ts";
+import { generateTracklistBBCode } from "./tracklist-bbcode.ts";
 
 async function main() {
   printInfo("Torrent Packer - Music Release Processor", []);
@@ -11,6 +12,18 @@ async function main() {
   // Parse CLI arguments and apply overrides
   const cliOptions = parseCliArgs();
   applyCliOverrides(cliOptions);
+
+  // Tracklist generation mode: only print BBCode tracklist and exit
+  if (cliOptions.tracklistOnly) {
+    if (!cliOptions.releasePath) {
+      console.error("--tracklist requires --release to be specified");
+      return;
+    }
+
+    const bbcode = await generateTracklistBBCode(cliOptions.releasePath, cliOptions.forceReleaseType);
+    console.log(bbcode);
+    return;
+  }
 
   // Ensure output directories exist
   await fs.mkdir(env.INPUT_DIR, { recursive: true });

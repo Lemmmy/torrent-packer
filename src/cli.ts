@@ -10,6 +10,7 @@ export interface CliOptions {
   spectrogramsDir?: string;
   releasePath?: string;
   forceReleaseType?: "cd" | "bd" | "dvd";
+  tracklistOnly?: boolean;
 }
 
 /**
@@ -56,6 +57,11 @@ export function parseCliArgs(): CliOptions {
       choices: ["cd", "bd", "dvd"],
       description: "Force release type detection (for non-disc-folder releases)",
     })
+    .option("tracklist", {
+      type: "boolean",
+      description: "Print BBCode tracklist for the specified --release directory and exit",
+      default: false,
+    })
     .help()
     .alias("help", "h")
     .parseSync();
@@ -69,5 +75,6 @@ export function parseCliArgs(): CliOptions {
     spectrogramsDir: argv["spectrograms-dir"] as string | undefined,
     releasePath: argv.release as string | undefined,
     forceReleaseType: argv["force-type"] as "cd" | "bd" | "dvd" | undefined,
+    tracklistOnly: argv.tracklist as boolean,
   };
 }
