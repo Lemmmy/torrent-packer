@@ -122,9 +122,9 @@ export async function processRelease(
 
     // Downsample to 16-bit
     // Remove -24 from the format tag (e.g., [WEB-FLAC-24] -> [WEB-FLAC], [FLAC-24-96] -> [FLAC])
-    const downsampledBasename = releaseInfo.basename.replace(/\[([^\]]*?)(?:-24[^\]]*?)?\]/, (match, prefix) => {
+    const downsampledBasename = releaseInfo.basename.replace(/\[([^\]]*-24[^\]]*)\](?!.*\[)/, (match, content) => {
       // Remove -24 and anything after it within the tag
-      const cleaned = prefix.replace(/-24.*$/, "");
+      const cleaned = content.replace(/-24.*$/, "");
       return `[${cleaned}]`;
     });
     const downsampledDir = path.join(env.OUTPUT_DIR, downsampledBasename);
