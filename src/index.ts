@@ -15,12 +15,7 @@ async function main() {
 
   // Tracklist generation mode: only print BBCode tracklist and exit
   if (cliOptions.tracklistOnly) {
-    if (!cliOptions.releasePath) {
-      console.error("--tracklist requires --release to be specified");
-      return;
-    }
-
-    const bbcode = await generateTracklistBBCode(cliOptions.releasePath, cliOptions.forceReleaseType);
+    const bbcode = await generateTracklistBBCode(cliOptions.releasePath || null, cliOptions.forceReleaseType);
     console.log(bbcode);
     return;
   }
