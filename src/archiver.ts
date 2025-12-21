@@ -16,13 +16,14 @@ export async function create7zArchive(sourceDir: string, outputDir: string): Pro
   console.log(chalkTemplate`  {blue →} Creating 7z archive: ${basename}.7z`);
 
   // Create archive with store mode (no compression) and include root folder
-  // We archive the parent directory but only include the target folder
+  // Use workingDir to set context and archive the directory by name
   const parentDir = path.dirname(sourceDir);
-  const stream = add(archivePath, basename, {
+  const stream = add(archivePath, sourceDir, {
     $bin: sevenBin.path7za,
     method: ["x=0"], // Store mode (no compression)
     recursive: true,
-    workingDir: parentDir, // Set working directory to parent so basename becomes the root folder
+    workingDir: parentDir,
+    charset: "UTF-8", // Ensure proper Unicode handling
   });
 
   return new Promise((resolve, reject) => {
