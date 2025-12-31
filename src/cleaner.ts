@@ -118,7 +118,7 @@ export async function stripFlacCovers(flacFiles: string[], queue: PQueue): Promi
  * Delete all .m3u8 files in a directory recursively
  */
 export async function deleteM3U8Files(releaseDir: string): Promise<void> {
-  const m3u8Files = await findFiles(releaseDir, /\.m3u8$/i);
+  const m3u8Files = await findFiles(releaseDir, /\.m3u8?$/i);
 
   for (const file of m3u8Files) {
     await fs.unlink(file);
