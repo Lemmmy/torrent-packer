@@ -63,7 +63,7 @@ function calculatePieceLength(totalSize: number): number {
 /**
  * Create a torrent file for a release directory
  */
-export async function createTorrentFile(options: TorrentCreationOptions): Promise<string> {
+export async function createTorrentFile(options: TorrentCreationOptions): Promise<string | null> {
   const { releaseDir, outputDir, tracker, suffix, discs = [], includeDiscTypes } = options;
 
   const releaseName = path.basename(releaseDir);
@@ -134,6 +134,11 @@ export async function createTorrentFile(options: TorrentCreationOptions): Promis
     return stream;
   });
 
+  if (fileList.length === 0) {
+    console.log(chalkTemplate`    {red ✗} Skipping ${torrentFileName} - no files to pack`);
+    return null;
+  }
+
   // Create torrent options
   const torrentOptions: Parameters<typeof createTorrent>[1] = {
     name: releaseName,
@@ -188,7 +193,9 @@ export async function createTorrentsForRelease(
         tracker,
         discs,
       });
-      console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      if (torrentPath) {
+        console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      }
     }
 
     // Create FLAC-24 torrent if available
@@ -199,7 +206,9 @@ export async function createTorrentsForRelease(
         tracker,
         discs,
       });
-      console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      if (torrentPath) {
+        console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      }
     }
 
     // Create 320 torrent if available and tracker allows it
@@ -210,7 +219,9 @@ export async function createTorrentsForRelease(
         tracker,
         discs,
       });
-      console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      if (torrentPath) {
+        console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      }
     }
 
     // Create V0 torrent if available
@@ -221,7 +232,9 @@ export async function createTorrentsForRelease(
         tracker,
         discs,
       });
-      console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      if (torrentPath) {
+        console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      }
     }
 
     // Create Blu-ray torrent if available and tracker allows it
@@ -234,7 +247,9 @@ export async function createTorrentsForRelease(
         discs,
         includeDiscTypes: ["bd"],
       });
-      console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      if (torrentPath) {
+        console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      }
     }
 
     // Create DVD torrent if available and tracker allows it
@@ -247,7 +262,9 @@ export async function createTorrentsForRelease(
         discs,
         includeDiscTypes: ["dvd"],
       });
-      console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      if (torrentPath) {
+        console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      }
     }
 
     // Create photobook torrent if available and tracker allows it
@@ -260,7 +277,9 @@ export async function createTorrentsForRelease(
         discs,
         includeDiscTypes: ["photobook"],
       });
-      console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      if (torrentPath) {
+        console.log(chalkTemplate`    {green ✓} Created: ${path.basename(torrentPath)}`);
+      }
     }
   }
 }
