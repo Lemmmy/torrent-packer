@@ -11,6 +11,7 @@ export interface CliOptions {
   releasePath?: string;
   forceReleaseType?: "cd" | "bd" | "dvd";
   tracklistOnly?: boolean;
+  spectrogramsOnly?: boolean;
 }
 
 /**
@@ -62,6 +63,11 @@ export function parseCliArgs(): CliOptions {
       description: "Print BBCode tracklist for the specified --release directory and exit",
       default: false,
     })
+    .option("spectrograms", {
+      type: "boolean",
+      description: "Generate spectrograms for all audio files in the specified --release directory and exit",
+      default: false,
+    })
     .help()
     .alias("help", "h")
     .parseSync();
@@ -76,5 +82,6 @@ export function parseCliArgs(): CliOptions {
     releasePath: argv.release as string | undefined,
     forceReleaseType: argv["force-type"] as "cd" | "bd" | "dvd" | undefined,
     tracklistOnly: argv.tracklist as boolean,
+    spectrogramsOnly: argv.spectrograms as boolean,
   };
 }

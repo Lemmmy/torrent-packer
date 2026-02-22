@@ -5,6 +5,7 @@ import { scanInputDirectory, loadTrackers, processRelease, shouldSkip320 } from 
 import { parseCliArgs } from "./cli.ts";
 import { printInfo, printSuccess } from "./warning-utils.ts";
 import { generateTracklistBBCode } from "./tracklist-bbcode.ts";
+import { generateSpectrogramsForDirectory } from "./spectrogram.ts";
 
 async function main() {
   printInfo("Torrent Packer - Music Release Processor", []);
@@ -17,6 +18,20 @@ async function main() {
   if (cliOptions.tracklistOnly) {
     const bbcode = await generateTracklistBBCode(cliOptions.releasePath || null, cliOptions.forceReleaseType);
     console.log(bbcode);
+    return;
+  }
+
+  // Spectrogram generation mode: only generate spectrograms and exit
+  if (cliOptions.spectrogramsOnly) {
+    if (!cliOptions.releasePath) {
+      console.error(chalkTemplate`{red ✗} --spectrograms requires --release to be specified`);
+      process.exit(1);
+    }
+
+    console.log(chalkTemplate`{bold Spectrogram Generation Mode}`);
+    console.log(chalkTemplate`  Input: {cyan ${cliOptions.releasePath}}\n`);
+
+    await generateSpectrogramsForDirectory(cliOptions.releasePath);
     return;
   }
 

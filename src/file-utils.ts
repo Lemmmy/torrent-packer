@@ -5,7 +5,7 @@ import * as path from "node:path";
  * Global filter patterns - regex patterns to exclude from all operations
  * These patterns are matched against the full path
  */
-export const GLOBAL_FILTER_PATTERNS = [/Raw Scans/i, /\.tif$/i, /AAC!/i];
+export const GLOBAL_FILTER_PATTERNS = [/Raw Scans/i, /Data Track.*/i, /\.tif$/i, /AAC!/i];
 
 /**
  * Check if a path should be globally filtered

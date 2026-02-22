@@ -106,6 +106,58 @@ async function generateSpectrogramsForFile(inputFile: string, outputDir: string)
 }
 
 /**
+ * Generate spectrograms for all audio files in a directory
+ * Supports flac, mp3, aac, ogg, wav, and other common audio formats
+ */
+export async function generateSpectrogramsForDirectory(inputDir: string): Promise<void> {
+  // Audio file extensions to process
+  const audioExtensions = /\.(flac|mp3|aac|ogg|wav|m4a|wma|ape|dsd|dsf)$/i;
+
+  // Find all audio files recursively
+  const audioFiles = await findFiles(inputDir, audioExtensions);
+
+  if (audioFiles.length === 0) {
+    console.log(chalkTemplate`  {yellow ⚠} No audio files found in directory`);
+    return;
+  }
+
+  console.log(chalkTemplate`  {blue →} Found ${audioFiles.length} audio file(s)`);
+
+  // Create Spectrograms subfolder under the input directory
+  const outputDir = path.join(inputDir, "Spectrograms");
+  await fs.mkdir(outputDir, { recursive: true });
+
+  console.log(chalkTemplate`  {blue →} Generating spectrograms in: {cyan ${outputDir}}`);
+
+  const queue = new PQueue({ concurrency: env.CONCURRENCY_LIMIT });
+
+  // Queue all spectrogram generation tasks
+  for (const audioFile of audioFiles) {
+    queue.add(async () => {
+      try {
+        // Get relative path from input dir to maintain directory structure
+        const relativePath = path.relative(inputDir, audioFile);
+        const relativeDir = path.dirname(relativePath);
+
+        // Create output directory maintaining structure
+        const fileOutputDir = path.join(outputDir, relativeDir);
+
+        await generateSpectrogramsForFile(audioFile, fileOutputDir);
+        console.log(chalkTemplate`    {green ✓} Generated spectrograms for {cyan ${path.basename(audioFile)}}`);
+      } catch (error) {
+        console.warn(
+          chalkTemplate`    {yellow ⚠} Failed to generate spectrogram for ${path.basename(audioFile)}: ${error}`,
+        );
+      }
+    });
+  }
+
+  // Wait for all spectrograms to complete
+  await queue.onIdle();
+  console.log(chalkTemplate`  {green ✓} Spectrogram generation completed`);
+}
+
+/**
  * Generate spectrograms for all audio files in a release
  * Returns a promise that resolves when all spectrograms are generated
  */
