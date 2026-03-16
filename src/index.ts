@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import chalkTemplate from "chalk-template";
 import { env, applyCliOverrides } from "./env.ts";
-import { scanInputDirectory, loadTrackers, processRelease, shouldSkip320 } from "./workflow.ts";
+import { scanInputDirectory, loadTrackers, processRelease, shouldSkip320, shouldSkipV0 } from "./workflow.ts";
 import { parseCliArgs } from "./cli.ts";
 import { printInfo, printSuccess } from "./warning-utils.ts";
 import { generateTracklistBBCode } from "./tracklist-bbcode.ts";
@@ -53,6 +53,7 @@ async function main() {
   for (const tracker of trackers) {
     const flags = [];
     if (tracker.no320) flags.push("no320");
+    if (tracker.noV0) flags.push("noV0");
     if (tracker.excludeFilePatterns) flags.push(`excludes: ${tracker.excludeFilePatterns.join(", ")}`);
     const flagsStr = flags.length > 0 ? ` (${flags.join(", ")})` : "";
     console.log(chalkTemplate`  {green ✓} ${tracker.name}${flagsStr}`);
@@ -63,6 +64,12 @@ async function main() {
   const skip320 = shouldSkip320(trackers);
   if (skip320) {
     console.log(chalkTemplate`{bold.yellow ℹ} All enabled trackers have no320 flag - skipping 320 transcoding\n`);
+  }
+
+  // Check if we should skip V0 transcoding
+  const skipV0 = shouldSkipV0(trackers);
+  if (skipV0) {
+    console.log(chalkTemplate`{bold.yellow ℹ} All enabled trackers have noV0 flag - skipping V0 transcoding\n`);
   }
 
   // Determine releases to process
@@ -87,7 +94,7 @@ async function main() {
   // Process each release
   for (const release of releases) {
     try {
-      await processRelease(release, trackers, skip320, cliOptions.noMove, cliOptions.forceReleaseType);
+      await processRelease(release, trackers, skip320, skipV0, cliOptions.noMove, cliOptions.forceReleaseType);
     } catch (error) {
       console.error(chalkTemplate`{bold.red ✗ Error processing release:} ${release}`);
       console.error(error);

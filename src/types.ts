@@ -4,6 +4,7 @@ export interface TrackerConfig {
   source?: string;
   default?: boolean;
   no320?: boolean;
+  noV0?: boolean;
   excludeFilePatterns?: string[];
   outputBluray?: boolean;
   outputDVD?: boolean;

@@ -41,6 +41,7 @@ export async function processRelease(
   releaseDir: string,
   trackers: TrackerConfig[],
   skip320: boolean = false,
+  skipV0: boolean = false,
   noMove: boolean = false,
   forceType?: "cd" | "bd" | "dvd",
 ): Promise<ProcessingResult> {
@@ -151,17 +152,21 @@ export async function processRelease(
         console.log(chalkTemplate`  {cyan ℹ} Skipping 320 transcoding (all trackers have no320)`);
       }
 
-      result.mp3_v0 = await transcodeToMP3({
-        inputDir: downsampledDir,
-        outputDir: env.OUTPUT_DIR,
-        format: "V0",
-        queue,
-        discs: releaseInfo.discs,
-      });
+      if (!skipV0) {
+        result.mp3_v0 = await transcodeToMP3({
+          inputDir: downsampledDir,
+          outputDir: env.OUTPUT_DIR,
+          format: "V0",
+          queue,
+          discs: releaseInfo.discs,
+        });
 
-      // Validate V0 durations
-      if (flacDurations) {
-        await validateTranscodedDurations(result.mp3_v0, flacDurations, queue);
+        // Validate V0 durations
+        if (flacDurations) {
+          await validateTranscodedDurations(result.mp3_v0, flacDurations, queue);
+        }
+      } else {
+        console.log(chalkTemplate`  {cyan ℹ} Skipping V0 transcoding (all trackers have noV0)`);
       }
     } catch (error) {
       console.error(chalkTemplate`  {red ✗} Downsampling not yet implemented`);
@@ -188,17 +193,21 @@ export async function processRelease(
       console.log(chalkTemplate`  {cyan ℹ} Skipping 320 transcoding (all trackers have no320)`);
     }
 
-    result.mp3_v0 = await transcodeToMP3({
-      inputDir: releaseDir,
-      outputDir: env.OUTPUT_DIR,
-      format: "V0",
-      queue,
-      discs: releaseInfo.discs,
-    });
+    if (!skipV0) {
+      result.mp3_v0 = await transcodeToMP3({
+        inputDir: releaseDir,
+        outputDir: env.OUTPUT_DIR,
+        format: "V0",
+        queue,
+        discs: releaseInfo.discs,
+      });
 
-    // Validate V0 durations
-    if (flacDurations) {
-      await validateTranscodedDurations(result.mp3_v0, flacDurations, queue);
+      // Validate V0 durations
+      if (flacDurations) {
+        await validateTranscodedDurations(result.mp3_v0, flacDurations, queue);
+      }
+    } else {
+      console.log(chalkTemplate`  {cyan ℹ} Skipping V0 transcoding (all trackers have noV0)`);
     }
   }
 
@@ -342,4 +351,11 @@ export async function loadTrackers(requestedTrackers?: string[]): Promise<Tracke
  */
 export function shouldSkip320(trackers: TrackerConfig[]): boolean {
   return trackers.length > 0 && trackers.every((tracker) => tracker.no320 === true);
+}
+
+/**
+ * Check if all trackers have noV0 flag set
+ */
+export function shouldSkipV0(trackers: TrackerConfig[]): boolean {
+  return trackers.length > 0 && trackers.every((tracker) => tracker.noV0 === true);
 }
